@@ -139,7 +139,7 @@ router.post('/:id/vote', (req, res) => {
   }
 
   // Check if poll is expired
-  if (poll.isExpired) {
+  if (poll.expiresAt && new Date(poll.expiresAt) < new Date()) {
     return res.status(400).json({ error: 'Poll has expired' });
   }
 
@@ -164,7 +164,6 @@ router.post('/:id/vote', (req, res) => {
 // GET /polls/:id - Fetch poll with vote counts
 router.get('/:id', (req, res) => {
   const pollId = parseInt(req.params.id);
-  const { showResults } = req.query;
 
   // Find poll
   const poll = polls.find(p => p.id === pollId);
@@ -176,27 +175,24 @@ router.get('/:id', (req, res) => {
   const totalVotes = poll.options.reduce((sum, option) => sum + option.votes, 0);
 
   // Return poll with or without results based on showResults flag
-  const pollToReturn = showResults === 'true' || shouldShowResults(poll) ? poll : getPollWithoutResults(poll);
+  const pollToReturn =  shouldShowResults(poll) ? poll : getPollWithoutResults(poll);
 
   res.json({
     poll: pollToReturn,
-    totalVotes: showResults === 'true' || shouldShowResults(poll) ? totalVotes : undefined
+    totalVotes: shouldShowResults(poll) ? totalVotes : undefined
+
   });
 });
 
 // PATCH /polls/:id/show-results - Toggle results visibility
 router.patch('/:id/show-results', (req, res) => {
   const pollId = parseInt(req.params.id);
-  const { showResults } = req.body;
 
   // Find poll
   const poll = polls.find(p => p.id === pollId);
   if (!poll) {
     return res.status(404).json({ error: 'Poll not found' });
   }
-
-  // Update showResults flag
-  poll.showResults = showResults;
 
   // Broadcast update to all clients
   broadcastPollUpdate(pollId);
