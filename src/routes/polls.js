@@ -47,20 +47,35 @@ const checkExpiredPolls = () => {
 // Run expiration check every minute
 setInterval(checkExpiredPolls, 60000);
 
+// Helper function to check if poll results should be shown
+const shouldShowResults = (poll) => {
+  // Nếu poll đã hết hạn, luôn hiển thị kết quả
+  if (poll.isExpired) {
+    return true;
+  }
+  // Nếu poll chưa hết hạn, chỉ hiển thị kết quả nếu người tạo cho phép
+  return poll.showResults;
+};
+
+// Helper function to get poll without results
+const getPollWithoutResults = (poll) => {
+  return {
+    ...poll,
+    options: poll.options.map(option => ({
+      id: option.id,
+      text: option.text
+    }))
+  };
+};
+
 // GET /polls - Fetch all polls
 router.get('/', (req, res) => {
   const { showResults } = req.query;
   const pollsToReturn = polls.map(poll => {
-    if (showResults === 'true' || poll.showResults) {
+    if (showResults === 'true' || shouldShowResults(poll)) {
       return poll;
     }
-    return {
-      ...poll,
-      options: poll.options.map(option => ({
-        id: option.id,
-        text: option.text
-      }))
-    };
+    return getPollWithoutResults(poll);
   });
   res.json({ polls: pollsToReturn });
 });
@@ -103,7 +118,7 @@ router.post('/', (req, res) => {
 
   res.status(201).json({ 
     message: 'Poll created successfully', 
-    poll 
+    poll: getPollWithoutResults(poll)
   });
 });
 
@@ -142,13 +157,7 @@ router.post('/:id/vote', (req, res) => {
 
   res.json({ 
     message: 'Vote recorded successfully', 
-    poll: poll.showResults ? poll : {
-      ...poll,
-      options: poll.options.map(opt => ({
-        id: opt.id,
-        text: opt.text
-      }))
-    }
+    poll: getPollWithoutResults(poll)
   });
 });
 
@@ -167,17 +176,11 @@ router.get('/:id', (req, res) => {
   const totalVotes = poll.options.reduce((sum, option) => sum + option.votes, 0);
 
   // Return poll with or without results based on showResults flag
-  const pollToReturn = showResults === 'true' || poll.showResults ? poll : {
-    ...poll,
-    options: poll.options.map(option => ({
-      id: option.id,
-      text: option.text
-    }))
-  };
+  const pollToReturn = showResults === 'true' || shouldShowResults(poll) ? poll : getPollWithoutResults(poll);
 
   res.json({
     poll: pollToReturn,
-    totalVotes: showResults === 'true' || poll.showResults ? totalVotes : undefined
+    totalVotes: showResults === 'true' || shouldShowResults(poll) ? totalVotes : undefined
   });
 });
 
@@ -200,7 +203,7 @@ router.patch('/:id/show-results', (req, res) => {
 
   res.json({
     message: 'Results visibility updated successfully',
-    poll
+    poll: getPollWithoutResults(poll)
   });
 });
 
