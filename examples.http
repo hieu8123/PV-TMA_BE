@@ -1,22 +1,94 @@
-### Create a new poll
+### Kiểm tra server có hoạt động không
+GET http://localhost:3000/
+
+### Kiểm tra health check
+GET http://localhost:3000/api/health
+
+### Kiểm tra version
+GET http://localhost:3000/api/version
+
+### Kiểm tra danh sách polls
+GET http://localhost:3000/polls
+
+### Tạo poll mới
 POST http://localhost:3000/polls
 Content-Type: application/json
 
 {
-  "title": "What's your favorite programming language?",
-  "options": ["JavaScript", "Python", "Java", "C#", "Go"]
+  "title": "Bạn thích framework nào nhất?",
+  "options": ["React", "Vue", "Angular"],
+  "expiresAt": "2024-03-27T10:00:00Z"
 }
 
-### Get all polls
-GET http://localhost:3000/polls
+### Tạo poll không có thời gian hết hạn
+POST http://localhost:3000/polls
+Content-Type: application/json
 
-### Get a specific poll
+{
+  "title": "Bạn thích ngôn ngữ lập trình nào nhất?",
+  "options": ["JavaScript", "Python", "Java"]
+}
+
+### Tạo poll thiếu tiêu đề (lỗi)
+POST http://localhost:3000/polls
+Content-Type: application/json
+
+{
+  "options": ["Option 1", "Option 2"]
+}
+
+### Tạo poll thiếu lựa chọn (lỗi)
+POST http://localhost:3000/polls
+Content-Type: application/json
+
+{
+  "title": "Invalid Poll",
+  "options": ["Option 1"]
+}
+
+### Tạo poll với thời gian hết hạn trong quá khứ (lỗi)
+POST http://localhost:3000/polls
+Content-Type: application/json
+
+{
+  "title": "Invalid Poll",
+  "options": ["Option 1", "Option 2"],
+  "expiresAt": "2020-01-01T00:00:00Z"
+}
+
+### Xem chi tiết poll
 GET http://localhost:3000/polls/1
 
-### Vote for an option (replace optionId with actual ID from poll response)
+### Xem poll không tồn tại (lỗi)
+GET http://localhost:3000/polls/999
+
+### Bỏ phiếu cho một lựa chọn
 POST http://localhost:3000/polls/1/vote
 Content-Type: application/json
 
 {
-  "optionId": "replace-with-actual-option-id"
+  "optionId": "1"
+}
+
+### Bỏ phiếu cho poll đã hết hạn (lỗi)
+POST http://localhost:3000/polls/2/vote
+Content-Type: application/json
+
+{
+  "optionId": "1"
+}
+
+### Bỏ phiếu với optionId không hợp lệ (lỗi)
+POST http://localhost:3000/polls/1/vote
+Content-Type: application/json
+
+{
+  "optionId": "invalid-id"
+}
+
+### Bỏ phiếu không có optionId (lỗi)
+POST http://localhost:3000/polls/1/vote
+Content-Type: application/json
+
+{
 } 
