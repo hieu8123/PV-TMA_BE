@@ -49,12 +49,25 @@ setInterval(checkExpiredPolls, 60000);
 
 // GET /polls - Fetch all polls
 router.get('/', (req, res) => {
-  res.json({ polls });
+  const { showResults } = req.query;
+  const pollsToReturn = polls.map(poll => {
+    if (showResults === 'true' || poll.showResults) {
+      return poll;
+    }
+    return {
+      ...poll,
+      options: poll.options.map(option => ({
+        id: option.id,
+        text: option.text
+      }))
+    };
+  });
+  res.json({ polls: pollsToReturn });
 });
 
 // POST /polls - Create a poll with title and options
 router.post('/', (req, res) => {
-  const { title, options, expiresAt } = req.body;
+  const { title, options, expiresAt, showResults } = req.body;
   
   // Validate request
   if (!title || !options || !Array.isArray(options) || options.length < 2) {
@@ -81,7 +94,8 @@ router.post('/', (req, res) => {
     })),
     createdAt: new Date(),
     expiresAt: expiresAt ? new Date(expiresAt) : null,
-    isExpired: false
+    isExpired: false,
+    showResults: showResults || false
   };
 
   // Add to polls array
@@ -128,13 +142,20 @@ router.post('/:id/vote', (req, res) => {
 
   res.json({ 
     message: 'Vote recorded successfully', 
-    poll 
+    poll: poll.showResults ? poll : {
+      ...poll,
+      options: poll.options.map(opt => ({
+        id: opt.id,
+        text: opt.text
+      }))
+    }
   });
 });
 
 // GET /polls/:id - Fetch poll with vote counts
 router.get('/:id', (req, res) => {
   const pollId = parseInt(req.params.id);
+  const { showResults } = req.query;
 
   // Find poll
   const poll = polls.find(p => p.id === pollId);
@@ -145,9 +166,41 @@ router.get('/:id', (req, res) => {
   // Calculate total votes
   const totalVotes = poll.options.reduce((sum, option) => sum + option.votes, 0);
 
+  // Return poll with or without results based on showResults flag
+  const pollToReturn = showResults === 'true' || poll.showResults ? poll : {
+    ...poll,
+    options: poll.options.map(option => ({
+      id: option.id,
+      text: option.text
+    }))
+  };
+
   res.json({
-    poll,
-    totalVotes
+    poll: pollToReturn,
+    totalVotes: showResults === 'true' || poll.showResults ? totalVotes : undefined
+  });
+});
+
+// PATCH /polls/:id/show-results - Toggle results visibility
+router.patch('/:id/show-results', (req, res) => {
+  const pollId = parseInt(req.params.id);
+  const { showResults } = req.body;
+
+  // Find poll
+  const poll = polls.find(p => p.id === pollId);
+  if (!poll) {
+    return res.status(404).json({ error: 'Poll not found' });
+  }
+
+  // Update showResults flag
+  poll.showResults = showResults;
+
+  // Broadcast update to all clients
+  broadcastPollUpdate(pollId);
+
+  res.json({
+    message: 'Results visibility updated successfully',
+    poll
   });
 });
 
